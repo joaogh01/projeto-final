@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controle de Gastos Pessoais - Versão Premium</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --cor-primaria: #4caf50;
+      --cor-secundaria: #f44336;
+      --bg-claro: #f4f7fa;
+      --bg-escuro: #121212;
+      --card-bg-claro: rgba(255, 255, 255, 0.9);
+      --card-bg-escuro: rgba(25, 25, 25, 0.85);
+      --texto-claro: #222;
+      --texto-escuro: #eee;
+      --verde-suave: #e6f4ea;
+      --vermelho-suave: #fbeaea;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1400&q=80') no-repeat center/cover fixed;
+      color: var(--texto-claro);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+    body.dark-mode {
+      background: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1400&q=80') no-repeat center/cover fixed;
+      background-color: var(--bg-escuro);
+      color: var(--texto-escuro);
+    }
+
+    .overlay-blur {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      z-index: -1;
+      transition: background 0.4s ease;
+    }
+    body.dark-mode .overlay-blur {
+      background: rgba(20, 20, 20, 0.7);
+    }
+
+    .container {
+      background: var(--card-bg-claro);
+      padding: 30px 25px 40px 25px;
+      border-radius: 15px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease;
+      position: relative;
+      z-index: 1;
+    }
+    body.dark-mode .container {
+      background: var(--card-bg-escuro);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+    }
+
+    .header-img {
+      width: 100%;
+      height: 160px;
+      border-radius: 12px;
+      background: url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80') center/cover no-repeat;
+      box-shadow: inset 0 0 70px rgba(0,0,0,0.25);
+      margin-bottom: 25px;
+    }
+
+    h1 {
+      font-weight: 600;
+      font-size: 1.8rem;
+      margin-bottom: 15px;
+      text-align: center;
+      letter-spacing: 1.2px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+    input, select {
+      padding: 12px 15px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s ease;
+    }
+    input:focus, select:focus {
+      outline: none;
+      box-shadow: 0 1px 8px var(--cor-primaria);
+    }
+    button[type="submit"] {
+      background-color: var(--cor-primaria);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      border: none;
+      padding: 14px 0;
+      font-size: 1.1rem;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 3px 8px rgba(76,175,80,0.6);
+    }
+    button[type="submit"]:hover {
+      background-color: #3a9440;
+    }
+
+    .feedback {
+      text-align: center;
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: #3a9440;
+      min-height: 24px;
+      user-select: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .feedback.show {
+      opacity: 1;
+    }
+
+    .saldo {
+      text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 25px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    #saldo.positivo {
+      color: var(--cor-primaria);
+    }
+    #saldo.negativo {
+      color: var(--cor-secundaria);
+    }
+
+    #lista-transacoes {
+      list-style: none;
+      max-height: 280px;
+      overflow-y: auto;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.07);
+      background: var(--card-bg-claro);
+      transition: background-color 0.4s ease;
+      padding: 8px 0;
+    }
+    body.dark-mode #lista-transacoes {
+      background: var(--card-bg-escuro);
+      box-shadow: 0 0 20px rgba(0,0,0,0.9);
+    }
+
+    .transacao {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid #ddd;
+      transition: background-color 0.3s ease;
+      cursor: default;
+    }
+    .transacao:hover {
+      background-color: rgba(76,175,80,0.08);
+    }
+    body.dark-mode .transacao:hover {
+      background-color: rgba(76,175,80,0.15);
+    }
+
+    .descricao {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .descricao i {
+      color: var(--cor-primaria);
+      font-size: 1.3rem;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .valor {
+      font-weight: 700;
+      font-size: 1rem;
+      min-width: 100px;
+      text-align: right;
+      user-select: none;
+    }
+    .entrada {
+      color: var(--cor-primaria);
+    }
+    .saida {
+      color: var(--cor-secundaria);
+    }
+
+    .remover-btn {
+      margin-left: 15px;
+      color: #888;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 1.2rem;
+      transition: color 0.3s ease;
+    }
+    .remover-btn:hover {
+      color: var(--cor-secundaria);
+    }
+
+    .animacao {
+      position: fixed;
+      pointer-events: none;
+      width: 40px;
+      height: 40px;
+      background-repeat: no-repeat;
+      background-size: contain;
+      z-index: 9999;
+      opacity: 0.9;
+      animation: subir 1.5s ease forwards;
+    }
+
+    @keyframes subir {
+      0% {
+        transform: translateY(0) scale(1) rotate(0deg);
+        opacity: 0.9;
+      }
+      100% {
+        transform: translateY(-150px) scale(0.5) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    .graficos {
+      margin-top: 30px;
+    }
+    canvas {
+      width: 100% !important;
+      max-height: 250px;
+      background: var(--card-bg-claro);
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+      transition: background-color 0.4s ease;
+    }
+    body.dark-mode canvas {
+      background: var(--card-bg-escuro);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.7);
+    }
+
+    .btn-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--card-bg-claro);
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+      z-index: 100;
+    }
+    body.dark-mode .btn-toggle {
+      background: var(--card-bg-escuro);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.8);
+    }
+    .btn-toggle i {
+      color: var(--cor-primaria);
+      font-size: 1.4rem;
+      transition: color 0.3s ease;
+    }
+    body.dark-mode .btn-toggle i {
+      color: var(--cor-primaria);
+    }
+
+    footer.footer {
+      margin-top: 35px;
+      font-size: 0.9rem;
+      color: #666;
+      user-select: none;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+    body.dark-mode footer.footer {
+      color: #bbb;
+    }
+
+    #lista-transacoes::-webkit-scrollbar {
+      width: 8px;
+    }
+    #lista-transacoes::-webkit-scrollbar-thumb {
+      background: var(--cor-primaria);
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay-blur"></div>
+
+  <button class="btn-toggle" aria-label="Alternar modo claro e escuro" title="Alternar modo claro e escuro">
+    <i class="fa-solid fa-moon"></i>
+  </button>
+
+  <div class="container" role="main" aria-label="Controle de Gastos Pessoais">
+    <div class="header-img" aria-hidden="true"></div>
+    <h1>Controle de Gastos Pessoais</h1>
+
+    <form id="formulario" aria-describedby="feedbackMsg" novalidate>
+      <input type="text" id="descricao" placeholder="Descrição" required aria-required="true" aria-label="Descrição da transação" />
+      <input type="number" id="valor" placeholder="Valor (R$)" min="0.01" step="0.01" required aria-required="true" aria-label="Valor da transação" />
+      <select id="tipo" required aria-required="true" aria-label="Tipo da transação">
+        <option value="" disabled selected>Tipo</option>
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+      <button type="submit" aria-label="Adicionar transação">Adicionar</button>
+    </form>
+
+    <div id="feedbackMsg" class="feedback" role="alert" aria-live="polite"></div>
+
+    <div class="saldo" aria-live="polite">
+      Saldo Atual: <span id="saldo" class="positivo">R$ 0,00</span>
+    </div>
+
+    <ul id="lista-transacoes" aria-label="Lista de transações"></ul>
+
+    <div class="graficos" aria-label="Gráficos resumo financeiro">
+      <canvas id="graficoBarra" aria-label="Gráfico de barras de entradas e saídas"></canvas>
+      <canvas id="graficoPizza" aria-label="Gráfico de pizza de entradas e saídas"></canvas>
+    </div>
+
+    <button id="btnLimpar" style="margin-top:20px; width:100%; padding:12px; border:none; border-radius:8px; background:#e53935; color:#fff; font-weight:600; cursor:pointer; box-shadow: 0 3px 8px rgba(229,57,53,0.6); transition: background-color 0.3s ease;">Limpar todas as transações</button>
+  </div>
+
+  <footer class="footer" aria-label="Rodapé">
+    Desenvolvido por João Gabriel Hensen dos Santos
+  </footer>
+
+  <script>
+    const formulario = document.getElementById('formulario');
+    const descricaoInput = document.getElementById('descricao');
+    const valorInput = document.getElementById('valor');
+    const tipoSelect = document.getElementById('tipo');
+    const listaTransacoes = document.getElementById('lista-transacoes');
+    const saldoTexto = document.getElementById('saldo');
+    const feedbackMsg = document.getElementById('feedbackMsg');
+    const btnToggle = document.querySelector('.btn-toggle');
+    const btnLimpar = document.getElementById('btnLimpar');
+
+    let transacoes = [];
+    let graficoBarra = null;
+    let graficoPizza = null;
+
+    function carregarTransacoes() {
+      const dados = localStorage.getItem('minhasTransacoes');
+      if (dados) {
+        transacoes = JSON.parse(dados);
+      }
+    }
+
+    function salvarTransacoes() {
+      localStorage.setItem('minhasTransacoes', JSON.stringify(transacoes));
+    }
+
+    function atualizarTela() {
+      listaTransacoes.innerHTML = '';
+      let saldo = 0;
+
+      transacoes.forEach((t, index) => {
+        const item = document.createElement('li');
+        item.className = 'transacao ' + t.tipo;
+
+        const icone = t.tipo === 'entrada' ? 'fa-circle-plus' : 'fa-circle-minus';
+        const corIcone = t.tipo === 'entrada' ? 'var(--cor-primaria)' : 'var(--cor-secundaria)';
+
+        const dataFormatada = new Date(t.data).toLocaleDateString('pt-BR');
+
+        const descSpan = document.createElement('span');
+        descSpan.className = 'descricao';
+        descSpan.innerHTML = `<i class="fa-solid ${icone}" style="color:${corIcone}" aria-hidden="true"></i> ${t.descricao} (${dataFormatada})`;
+
+        const sinal = t.tipo === 'entrada' ? '+' : '-';
+        const valorSpan = document.createElement('span');
+        valorSpan.className = 'valor ' + t.tipo;
+        valorSpan.textContent = `${sinal} R$ ${t.valor.toFixed(2)}`;
+
+        const btnRemove = document.createElement('button');
+        btnRemove.className = 'remover-btn';
+        btnRemove.setAttribute('aria-label', `Remover transação ${t.descricao}`);
+        btnRemove.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        btnRemove.onclick = () => {
+          transacoes.splice(index, 1);
+          salvarTransacoes();
+          atualizarTela();
+          mostrarFeedback('Transação removida', 'success');
+          atualizarGraficos();
+        };
+
+        item.appendChild(descSpan);
+        item.appendChild(valorSpan);
+        item.appendChild(btnRemove);
+
+        listaTransacoes.appendChild(item);
+
+        saldo += t.tipo === 'entrada' ? t.valor : -t.valor;
+      });
+
+      saldoTexto.textContent = `R$ ${saldo.toFixed(2)}`;
+      saldoTexto.className = saldo >= 0 ? 'positivo' : 'negativo';
+
+      atualizarGraficos();
+    }
+
+    function mostrarFeedback(msg, tipo) {
+      feedbackMsg.textContent = msg;
+      feedbackMsg.style.color = tipo === 'success' ? 'var(--cor-primaria)' : 'var(--cor-secundaria)';
+      feedbackMsg.classList.add('show');
+      setTimeout(() => {
+        feedbackMsg.classList.remove('show');
+      }, 2000);
+    }
+
+    function dispararAnimacao(tipo) {
+      const anim = document.createElement('div');
+      anim.classList.add('animacao');
+      anim.style.left = (window.innerWidth / 2 + (Math.random() * 100 - 50)) + 'px';
+      anim.style.top = (window.innerHeight - 100) + 'px';
+
+      if (tipo === 'entrada') {
+        anim.style.backgroundImage = "url('https://cdn-icons-png.flaticon.com/512/616/616408.png')";
+      } else {
+        anim.style.backgroundImage = "url('https://cdn-icons-png.flaticon.com/512/1345/1345874.png')";
+      }
+
+      document.body.appendChild(anim);
+
+      setTimeout(() => {
+        anim.remove();
+      }, 1500);
+    }
+
+    function atualizarGraficos() {
+      const entradas = transacoes.filter(t => t.tipo === 'entrada').reduce((acc, t) => acc + t.valor, 0);
+      const saidas = transacoes.filter(t => t.tipo === 'saida').reduce((acc, t) => acc + t.valor, 0);
+
+      const ctxBarra = document.getElementById('graficoBarra').getContext('2d');
+      if (graficoBarra) graficoBarra.destroy();
+      graficoBarra = new Chart(ctxBarra, {
+        type: 'bar',
+        data: {
+          labels: ['Entradas', 'Saídas'],
+          datasets: [{
+            label: 'Valores em R$',
+            data: [entradas, saidas],
+            backgroundColor: [getComputedStyle(document.documentElement).getPropertyValue('--cor-primaria'), getComputedStyle(document.documentElement).getPropertyValue('--cor-secundaria')]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      const ctxPizza = document.getElementById('graficoPizza').getContext('2d');
+      if (graficoPizza) graficoPizza.destroy();
+      graficoPizza = new Chart(ctxPizza, {
+        type: 'pie',
+        data: {
+          labels: ['Entradas', 'Saídas'],
+          datasets: [{
+            data: [entradas, saidas],
+            backgroundColor: [getComputedStyle(document.documentElement).getPropertyValue('--cor-primaria'), getComputedStyle(document.documentElement).getPropertyValue('--cor-secundaria')]
+          }]
+        },
+        options: { responsive: true }
+      });
+    }
+
+    btnToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      const icon = btnToggle.querySelector('i');
+      if (document.body.classList.contains('dark-mode')) {
+        icon.classList.replace('fa-moon', 'fa-sun');
+      } else {
+        icon.classList.replace('fa-sun', 'fa-moon');
+      }
+    });
+
+    function aplicarTemaInicial() {
+      const darkPref = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (darkPref) {
+        document.body.classList.add('dark-mode');
+        btnToggle.querySelector('i').classList.replace('fa-moon', 'fa-sun');
+      }
+    }
+    aplicarTemaInicial();
+
+    formulario.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const descricao = descricaoInput.value.trim();
+      const valor = parseFloat(valorInput.value);
+      const tipo = tipoSelect.value;
+
+      if (!descricao) {
+        mostrarFeedback('Por favor, insira uma descrição válida.', 'error');
+        return;
+      }
+      if (isNaN(valor) || valor <= 0) {
+        mostrarFeedback('Por favor, insira um valor válido maior que zero.', 'error');
+        return;
+      }
+      if (!tipo) {
+        mostrarFeedback('Por favor, selecione o tipo da transação.', 'error');
+        return;
+      }
+
+      const transacao = {
+        descricao,
+        valor,
+        tipo,
+        data: new Date().toISOString()
+      };
+      transacoes.push(transacao);
+      salvarTransacoes();
+      atualizarTela();
+      formulario.reset();
+      tipoSelect.selectedIndex = 0;
+
+      mostrarFeedback('Transação adicionada com sucesso!', 'success');
+      dispararAnimacao(tipo);
+    });
+
+    btnLimpar.addEventListener('click', () => {
+      if (confirm('Tem certeza que deseja apagar todas as transações?')) {
+        transacoes = [];
+        salvarTransacoes();
+        atualizarTela();
+        mostrarFeedback('Todas as transações foram apagadas.', 'success');
+      }
+    });
+
+    carregarTransacoes();
+    atualizarTela();
+
+  </script>
+</body>
+</html>
